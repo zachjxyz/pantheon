@@ -1,0 +1,5 @@
+scripts/node_modules/
+scripts/.context.json
+scripts/.solutions.json
+scripts/.evaluation.json
+TECH-SPEC.md
