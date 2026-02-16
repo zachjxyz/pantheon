@@ -28,6 +28,13 @@ Before anything else, check if Pantheon is configured:
 
 1. Try to read `~/.claude/pantheon.json` using the Read tool
 2. If the file exists and contains a valid `apiKey` (non-empty string) and `models` array (2+ entries each with `name` and `modelId`), proceed to Phase 1
+3. Also scan the user's installed skills to build the skills registry:
+
+```bash
+cd ~/.claude/skills/pantheon/scripts && npx tsx scan-skills.ts
+```
+
+This writes `~/.claude/pantheon-skills.json` — a compact index of every installed skill's name, description, and path. Run this during initial setup and it will also refresh at the start of each Phase 1.
 
 If the config is missing or invalid, run the setup wizard conversationally. Use AskUserQuestion for each step.
 
@@ -178,7 +185,8 @@ Before running the scripts, gather all context the models will need:
 1. Read all files relevant to the task using Glob/Grep/Read
 2. Read CLAUDE.md if it exists (project conventions)
 3. Get a file tree of the target directory via `ls -la`
-4. Build a context JSON object and write it to `~/.claude/skills/pantheon/scripts/.context.json`:
+4. **Discover relevant skills** (see Skill Discovery below)
+5. Build a context JSON object and write it to `~/.claude/skills/pantheon/scripts/.context.json`:
 
 ```json
 {
@@ -187,9 +195,49 @@ Before running the scripts, gather all context the models will need:
     "relative/path/file.ts": "full file contents..."
   },
   "conventions": "Contents of CLAUDE.md or empty string",
-  "fileTree": "Output of ls -la for the target directory"
+  "fileTree": "Output of ls -la for the target directory",
+  "skills": [
+    {
+      "name": "skill-name",
+      "description": "The skill's description from its frontmatter",
+      "content": "The skill's SKILL.md content (trimmed, no frontmatter)",
+      "reason": "Brief reason why this skill is relevant to the task"
+    }
+  ]
 }
 ```
+
+#### Skill Discovery
+
+Include relevant domain-specific skills so competing models get the same guidelines Claude Code would normally use.
+
+1. **Refresh the registry** (picks up any newly installed/removed skills):
+
+```bash
+cd ~/.claude/skills/pantheon/scripts && npx tsx scan-skills.ts
+```
+
+2. **Read the registry** — `~/.claude/pantheon-skills.json` contains every installed skill's `name`, `description`, and `path`. Read this file instead of scanning directories.
+
+3. **Match skills to the task.** Walk the registry and select skills whose description matches the task. Match on:
+   - Task domain (e.g., a React task → `vercel-react-best-practices`, `frontend-design`)
+   - Technologies involved (e.g., Postgres queries → `supabase-postgres-best-practices`)
+   - Task type (e.g., API design → `api-design-principles`)
+   - Don't include skills that are clearly unrelated (e.g., `slack-gif-creator` for a database migration)
+
+4. **Read full content for matched skills only.** Use each matched entry's `path` to read its SKILL.md. Strip the YAML frontmatter — only include the body.
+
+5. **Present matched skills to the user** before proceeding:
+
+> **Skills detected for this task:**
+> - **frontend-design** — Task involves building a React component with styling
+> - **vercel-react-best-practices** — Project uses Next.js App Router
+>
+> These will be included as guidelines for the competing models.
+
+If no skills are relevant, skip the `skills` field entirely (or set it to `[]`). Do not force-match skills that don't apply.
+
+**Token budget:** If the total skill content exceeds ~8,000 tokens, prioritize the most relevant skills and trim or exclude lower-priority ones. The skills section should supplement the context, not dominate it.
 
 ### Phase 2: Parallel Solve
 

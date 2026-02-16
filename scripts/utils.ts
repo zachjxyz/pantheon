@@ -12,6 +12,8 @@ export function buildSolvePrompt(ctx: ContextPackage): string {
     .map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
     .join('\n\n');
 
+  const skillsSection = buildSkillsSection(ctx.skills);
+
   return `You are solving a coding task. Produce a complete, implementable solution.
 
 ## Task
@@ -22,7 +24,7 @@ ${filesFormatted}
 
 ## Project Conventions
 ${ctx.conventions || 'None provided.'}
-
+${skillsSection}
 ## File Tree
 \`\`\`
 ${ctx.fileTree}
@@ -40,6 +42,19 @@ ${ctx.fileTree}
 - Do NOT wrap file contents in markdown code fences — the === delimiters are sufficient.`;
 }
 
+function buildSkillsSection(skills?: import('./types.js').SkillContext[]): string {
+  if (!skills || skills.length === 0) return '';
+
+  const entries = skills
+    .map(
+      (s) =>
+        `### ${s.name}\n**Why:** ${s.reason}\n\n${s.content}`,
+    )
+    .join('\n\n---\n\n');
+
+  return `\n## Relevant Skills & Guidelines\nThe following domain-specific skills are relevant to this task. Follow their guidelines when they apply to your solution.\n\n${entries}\n\n`;
+}
+
 export function buildEvaluatePrompt(
   ctx: ContextPackage,
   anonymizedSolutions: { label: string; content: string }[],
@@ -52,6 +67,8 @@ export function buildEvaluatePrompt(
     .map((s) => `### ${s.label}\n${s.content}`)
     .join('\n\n---\n\n');
 
+  const skillsSection = buildSkillsSection(ctx.skills);
+
   return `You are evaluating coding solutions. Score each on the rubric below.
 
 ## Original Task
@@ -59,8 +76,7 @@ ${ctx.task}
 
 ## Existing Code Context
 ${filesFormatted}
-
-## Solutions to Evaluate
+${skillsSection}## Solutions to Evaluate
 
 ${solutionsFormatted}
 

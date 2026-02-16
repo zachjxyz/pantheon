@@ -1,8 +1,27 @@
+export interface SkillEntry {
+  name: string;
+  description: string;
+  path: string; // absolute path to the skill's SKILL.md
+}
+
+export interface SkillsRegistry {
+  skills: SkillEntry[];
+  lastScanned: string; // ISO timestamp
+}
+
+export interface SkillContext {
+  name: string;
+  description: string;
+  content: string;
+  reason: string;
+}
+
 export interface ContextPackage {
   task: string;
   files: Record<string, string>;
   conventions: string;
   fileTree: string;
+  skills?: SkillContext[];
 }
 
 export interface ModelEntry {
